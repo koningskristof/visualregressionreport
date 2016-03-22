@@ -3,9 +3,17 @@
 var fs = require('fs');
 var resemble = require('node-resemble-js');
 var glob = require("glob");
+var Handlebars = require("Handlebars");
 
 var config = require('../../visualregressionreport.conf.js').config;
-var template = fs.readFileSync('template.html').toString();
+
+config.screenshotBaseFolder = config.screenshotFolder + 'base/'
+config.screenshotDiffFolder = config.screenshotFolder + 'diff/'
+
+
+var templateSource = '<html><style>.compare{ width: 100%;} .diffimage, .baseimage, .compareimage { width: 30%; display: inline-block; } img { width: 100%;}</style><body><ul class="imagelist">{{#screenshots}}<li class="compare"><h2>{{testDescription}} ({{misMatchPercentage}} %)</h2></h2><div class="baseimage"><img src="{{base}}"></div><div class="compareimage"><img src="{{compare}}"></div><div class="diffimage"><img src="{{diff}}"></div></li>{{/screenshots}}</ul></body></html>';
+var template = Handlebars.compile(templateSource);
+var logData = [];
 
 
 resemble.outputSettings({
@@ -26,20 +34,11 @@ function VisualTester () {
     createScreenshotDiffFolder();
 
     this.generateReport = function () {
-        var files = fs.readdirSync(config.screenshotBaseFolder);
+        var files = fs.readdirSync(config.screenshotDiffFolder);
 
-        var html = '';
+        var htmlReport = template({screenshots:logData});
 
-        files.forEach(function (file) {
-            var compareHtml = '';
-            compareHtml += '<img src="../base' + file + '">';
-            compareHtml += '<img src="../base' + file + '">';
-            html += compareHtml;
-        });
-
-        fs.writeFileSync(config.screenshotDiffFolder + 'diffs.html', html,'utf8' , function() {
-            console.log('screenshot diff written ')
-        });
+        fs.writeFileSync(config.screenshotDiffFolder + 'diffs.html', htmlReport ,'utf8');
 
     };
 
@@ -89,7 +88,7 @@ function VisualTester () {
         fs.readFile(config.screenshotBaseFolder + testDescription + '.png', function(error, baseScreenshot) {
             if(error !== null && error.code === 'ENOENT') {
                 browser.takeScreenshot().then(function(pngString){
-                    saveScreenshot(pngString, testDescription);
+                    saveBaseScreenshot(pngString, testDescription);
                 });
                 deferred.fulfill(true);
                 return;
@@ -106,9 +105,14 @@ function VisualTester () {
         return deferred.promise;
     }
 
-    function saveScreenshot(pngString, testDescription) {
+    function saveBaseScreenshot(pngString, testDescription) {
         var newScreenshot = new Buffer(pngString, 'base64');
         fs.writeFile(config.screenshotBaseFolder + testDescription + '.png', newScreenshot);
+    }
+
+    function saveCompareScreenshot(pngString, testDescription, misMatchPercentage) {
+        var newScreenshot = new Buffer(pngString, 'base64');
+        fs.writeFile(config.screenshotDiffFolder + testDescription + ' - compare ' + misMatchPercentage + '%.png', newScreenshot);
     }
 
     function compareScreenshot(newScreenshot, baseScreenshot, testDescription, allowedMisMatchPercentage, callback) {
@@ -117,13 +121,17 @@ function VisualTester () {
             .ignoreColors()
             .onComplete(function(data){
                 if (Number(data.misMatchPercentage) > allowedMisMatchPercentage) {
+                    saveCompareScreenshot(newScreenshot, testDescription, data.misMatchPercentage);
                     data.getDiffImage().pack().pipe(
                         fs.createWriteStream(config.screenshotDiffFolder + '/' + testDescription +  ' - differ ' + data.misMatchPercentage + '%.png')
                     );
                     var info = {
                         testDescription: testDescription,
                         misMatchPercentage: data.misMatchPercentage,
-                        data: data
+                        data: data,
+                        diff: testDescription +  ' - differ ' + data.misMatchPercentage + '%.png',
+                        base: '../../base/' + testDescription + '.png',
+                        compare: testDescription + ' - compare ' + data.misMatchPercentage + '%.png'
                     };
 
                     writeJSONDiffInfo(info, testDescription);
@@ -133,7 +141,8 @@ function VisualTester () {
     }
 
     function writeJSONDiffInfo(info, testDescription) {
-        fs.writeFileSync(config.screenshotDiffFolder + '/' + testDescription + '.json', JSON.stringify(info));
+        logData.push(info);
+        //fs.writeFileSync(config.screenshotDiffFolder + '/' + testDescription + '.json', JSON.stringify(info));
     }
 }
 
