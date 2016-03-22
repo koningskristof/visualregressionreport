@@ -5,6 +5,8 @@ var resemble = require('node-resemble-js');
 var glob = require("glob");
 
 var config = require('../../visualregressionreport.conf.js').config;
+var template = fs.readFileSync('template.html').toString();
+
 
 resemble.outputSettings({
     transparency: 0.8
