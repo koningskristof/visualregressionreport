@@ -66,9 +66,9 @@ function VisualTester () {
     this.setBrowser = function (browser) {
         browser.getCapabilities().then(function (capabilities) {
             browserConfig = {
-                os: capabilities.caps_.platform,
-                name: capabilities.caps_.browserName,
-                version: capabilities.caps_.version
+                os: capabilities.platform,
+                name: capabilities.browserName,
+                version: capabilities.version
             };
             config.screenshotDiffFolder += browserConfig.os + ' - ' + browserConfig.name + ' - ' + browserConfig.version + '/';
 
