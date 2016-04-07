@@ -3,7 +3,7 @@
 var fs = require('fs');
 var resemble = require('node-resemble-js');
 var glob = require("glob");
-var Handlebars = require("Handlebars");
+var Handlebars = require("handlebars");
 
 var config = require('../../visualregressionreport.conf.js').config;
 
