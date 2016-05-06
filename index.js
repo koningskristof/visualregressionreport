@@ -20,14 +20,14 @@ resemble.outputSettings({
     transparency: 0.8
 });
 
-function VisualTester () {
+function VisualTester() {
 
     var browserConfig = {};
 
-    if (!fs.existsSync(config.screenshotFolder)){
+    if (!fs.existsSync(config.screenshotFolder)) {
         fs.mkdirSync(config.screenshotFolder);
     }
-    if (!fs.existsSync(config.screenshotBaseFolder)){
+    if (!fs.existsSync(config.screenshotBaseFolder)) {
         fs.mkdirSync(config.screenshotBaseFolder);
     }
 
@@ -36,13 +36,13 @@ function VisualTester () {
     this.generateReport = function () {
         var files = fs.readdirSync(config.screenshotDiffFolder);
 
-        var htmlReport = template({screenshots:logData});
+        var htmlReport = template({screenshots: logData});
 
-        fs.writeFileSync(config.screenshotDiffFolder + 'diffs.html', htmlReport ,'utf8');
+        fs.writeFileSync(config.screenshotDiffFolder + 'diffs.html', htmlReport, 'utf8');
 
     };
 
-    this.compareScreen = function(testDescription, allowedMisMatchPercentage) {
+    this.compareScreen = function (testDescription, allowedMisMatchPercentage) {
 
         var flow = protractor.promise.controlFlow();
         flow.execute(function () {
@@ -63,21 +63,13 @@ function VisualTester () {
         });
     };
 
-    this.setBrowser = function (browser) {
-        browser.getCapabilities().then(function (capabilities) {
-            browserConfig = {
-                os: capabilities.platform,
-                name: capabilities.browserName,
-                version: capabilities.version
-            };
-            config.screenshotDiffFolder += browserConfig.os + ' - ' + browserConfig.name + ' - ' + browserConfig.version + '/';
-
-            createScreenshotDiffFolder();
-        });
+    this.setPath = function (path) {
+        config.screenshotDiffFolder += path + '/';
+        createScreenshotDiffFolder();
     };
 
     function createScreenshotDiffFolder() {
-        if (!fs.existsSync(config.screenshotDiffFolder)){
+        if (!fs.existsSync(config.screenshotDiffFolder)) {
             fs.mkdirSync(config.screenshotDiffFolder);
         }
     }
@@ -85,18 +77,18 @@ function VisualTester () {
     function doCompareScreen(testDescription, allowedMisMatchPercentage) {
         var deferred = protractor.promise.defer();
 
-        fs.readFile(config.screenshotBaseFolder + testDescription + '.png', function(error, baseScreenshot) {
-            if(error !== null && error.code === 'ENOENT') {
-                browser.takeScreenshot().then(function(pngString){
+        fs.readFile(config.screenshotBaseFolder + testDescription + '.png', function (error, baseScreenshot) {
+            if (error !== null && error.code === 'ENOENT') {
+                browser.takeScreenshot().then(function (pngString) {
                     saveBaseScreenshot(pngString, testDescription);
                 });
                 deferred.fulfill(true);
                 return;
             }
 
-            browser.takeScreenshot().then(function(pngString) {
+            browser.takeScreenshot().then(function (pngString) {
                 var newScreenshot = new Buffer(pngString, 'base64');
-                compareScreenshot(newScreenshot, baseScreenshot, testDescription, allowedMisMatchPercentage, function() {
+                compareScreenshot(newScreenshot, baseScreenshot, testDescription, allowedMisMatchPercentage, function () {
                     deferred.fulfill(true);
                 });
             });
@@ -119,17 +111,17 @@ function VisualTester () {
         resemble(newScreenshot)
             .compareTo(baseScreenshot)
             .ignoreColors()
-            .onComplete(function(data){
+            .onComplete(function (data) {
                 if (Number(data.misMatchPercentage) > allowedMisMatchPercentage) {
                     saveCompareScreenshot(newScreenshot, testDescription, data.misMatchPercentage);
                     data.getDiffImage().pack().pipe(
-                        fs.createWriteStream(config.screenshotDiffFolder + '/' + testDescription +  ' - differ ' + data.misMatchPercentage + '%.png')
+                        fs.createWriteStream(config.screenshotDiffFolder + '/' + testDescription + ' - differ ' + data.misMatchPercentage + '%.png')
                     );
                     var info = {
                         testDescription: testDescription,
                         misMatchPercentage: data.misMatchPercentage,
                         data: data,
-                        diff: testDescription +  ' - differ ' + data.misMatchPercentage + '%.png',
+                        diff: testDescription + ' - differ ' + data.misMatchPercentage + '%.png',
                         base: '../../base/' + testDescription + '.png',
                         compare: testDescription + ' - compare ' + data.misMatchPercentage + '%.png'
                     };
